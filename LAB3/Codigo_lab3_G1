@@ -3,31 +3,29 @@
 #include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
 
-#define IN1 0
-#define IN2 1
-#define IN3 2
-#define IN4 3
-#define R 4
-#define G 5
-#define B 6
-#define sensor_inc 7
+#define IN1 D0
+#define IN2 D1
+#define IN3 D2
+#define IN4 D3
+#define R D4
+#define G D5
+#define B D6
+#define sensor_inc D7
 #define eje_x A0
 
 int valor_inc = 0;
-String valor_inc_pasaje = "";
 int valor_x = 0;
 String valor_x_pasaje = "";
 AccelStepper motor(AccelStepper::HALF4WIRE, IN1, IN3, IN2, IN4);
 const int stepsPerRevolution = 2048;
 int velocidad_actual = 500;
-String velocidad_pasaje = "";
+String motor_pasaje = "";
 int velocidad_apagado = 0;
-String texto = "VEL";
 
-const char *ssid = "red";
-const char password = "***";
+const char *ssid = "RedLSP";
+const char *password = "LSPCOVISA";
 
-ESP8266WebServer server(81);
+ESP8266WebServer server(80);
 
 void setup() {
   pinMode(R, OUTPUT);
@@ -65,66 +63,17 @@ void setup() {
 }
 
 void loop() {
-  server.handleClient(); // Maneja las solicitudes HTTP
-  
-  //sensor de inclinacion
+  //Lectura de sensor de inclinacion
   valor_inc = digitalRead(sensor_inc);
+  valor_inc = valor_inc * 180 + 90;
 
-  // sensor basculante biaxial
+  //Lectura de sensor basculante biaxial
   valor_x = analogRead(eje_x);
 
-  //motor
-  if (valor_inc > 0){
-    motor.run();
-    motor.move(stepsPerRevolution);
-    if (valor_x > 1000){
-      if (velocidad_actual < 1000) {
-        velocidad_actual = velocidad_actual + 100 ;
-        motor.setMaxSpeed(velocidad_actual);
-        Serial.println();
-        digitalWrite(R, 0);
-        digitalWrite(G, 2);
-        digitalWrite(B, 0);
-        delay(300);
-        digitalWrite(R, 0);
-        digitalWrite(G, 0);
-        digitalWrite(B, 0);
-      };
-      if (velocidad_actual == 1000) {
-        Serial.println();
-        digitalWrite(R, 2);
-        digitalWrite(G, 2);
-        digitalWrite(B, 2);
-        };
-    }
-    else{
-      if (valor_x < 100){
-        if (velocidad_actual > 0) {  
-          velocidad_actual = velocidad_actual - 100;
-          motor.setMaxSpeed(velocidad_actual);
-          Serial.println();
-          digitalWrite(R, 0);
-          digitalWrite(G, 0);
-          digitalWrite(B, 2);
-          delay(300);
-          digitalWrite(R, 0);
-          digitalWrite(G, 0);
-          digitalWrite(B, 0);
-        };
-        if (velocidad_actual == 0){
-          Serial.println();
-          digitalWrite(R, 2);
-          digitalWrite(G, 0);
-          digitalWrite(B, 0);
-        };
-      }
-    }
-  }
+  funcionamiento_motor();
+  server.handleClient(); // Maneja las solicitudes HTTP
+  delay(5);
 }
-
-String valor_inc_pasaje = "90°";       
-String motor_pasaje = "APAGADO"; 
-String valor_x_pasaje = "ARRIBA";      
 
 void handleRoot() {
   //Lectura de sensor de inclinacion
@@ -138,10 +87,14 @@ void handleRoot() {
   calculoPasaje();
 
   //Armado de documento json
+  String inc="Inclinacion";
+  String motor = "Estado del motor";
+  String potenciometro = "Ubicación del potenciometro";
+  
   StaticJsonDocument<200> jsonDoc;
-  jsonDoc["inclinacion"] = valor_inc_pasaje;
-  jsonDoc["motor"] = motor_pasaje;
-  jsonDoc["potenciometro"] = valor_x_pasaje;
+  jsonDoc[inc] = valor_inc;
+  jsonDoc[motor] = motor_pasaje;
+  jsonDoc[potenciometro] = valor_x_pasaje;
 
   String response;
   serializeJson(jsonDoc, response);
@@ -158,12 +111,7 @@ void calculoPasaje() {
     } else {
       valor_x_pasaje = "NEUTRO";
     }
-  }   
-  
-  //Pasaje del sensor de inclinación
-  valor_inc_pasaje = "";
-  valor_inc_pasaje.concat(String(valor_inc));
-  valor_inc_pasaje.concat("°");
+  }  
 
   //Pasaje de velocidad del motor
   if (valor_inc == 90) {
@@ -171,4 +119,50 @@ void calculoPasaje() {
   } else {
     motor_pasaje = "APAGADO";
   };
+}
+
+void funcionamiento_motor(){
+  //motor
+  if (valor_inc < 270){
+    motor.run();
+    motor.move(stepsPerRevolution);
+    if (valor_x > 1000){
+      if (velocidad_actual < 1000) {
+        velocidad_actual = velocidad_actual + 100 ;
+        motor.setMaxSpeed(velocidad_actual);
+        digitalWrite(R, 0);
+        digitalWrite(G, 2);
+        digitalWrite(B, 0);
+        delay(300);
+        digitalWrite(R, 0);
+        digitalWrite(G, 0);
+        digitalWrite(B, 0);
+      };
+      if (velocidad_actual == 1000) {
+        digitalWrite(R, 2);
+        digitalWrite(G, 2);
+        digitalWrite(B, 2);
+        };
+    }
+    else{
+      if (valor_x < 100){
+        if (velocidad_actual > 0) {  
+          velocidad_actual = velocidad_actual - 100;
+          motor.setMaxSpeed(velocidad_actual);
+          digitalWrite(R, 0);
+          digitalWrite(G, 0);
+          digitalWrite(B, 2);
+          delay(300);
+          digitalWrite(R, 0);
+          digitalWrite(G, 0);
+          digitalWrite(B, 0);
+        };
+        if (velocidad_actual == 0){
+          digitalWrite(R, 2);
+          digitalWrite(G, 0);
+          digitalWrite(B, 0);
+        };
+      }
+    }
+  }
 }
