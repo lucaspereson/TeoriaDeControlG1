@@ -15,7 +15,7 @@
 
 int valor_inc = 0;
 int valor_x = 0;
-int valor_x_pasaje = 0;
+String valor_x_pasaje = "";
 AccelStepper motor(AccelStepper::HALF4WIRE, IN1, IN3, IN2, IN4);
 const int stepsPerRevolution = 4096;
 int velocidad_actual = 500;
@@ -104,12 +104,12 @@ void handleRoot() {
 void calculoPasaje() {
   //Pasaje del potenciometro
   if (valor_x > 1000) {
-    valor_x_pasaje = 1;
+    valor_x_pasaje = "ARRIBA";
   } else {
     if (valor_x < 100) {
-      valor_x_pasaje = -1;
+      valor_x_pasaje = "ABAJO";
     } else {
-      valor_x_pasaje = 0;
+      valor_x_pasaje = "NEUTRO";
     }
   }  
 
